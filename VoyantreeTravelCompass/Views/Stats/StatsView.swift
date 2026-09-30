@@ -103,7 +103,7 @@ struct StatsView: View {
             summaryTile(title: "Trip days", value: tripDays, icon: "calendar")
             summaryTile(title: "Tasks", value: store.tripTasks.count, icon: "checklist")
             summaryTile(title: "Phrases", value: store.phrases.count, icon: "text.bubble")
-            summaryTile(title: "Itinerary", value: store.itineraryDays.count, icon: "list.bullet.rectangle")
+            summaryTile(title: "Stops", value: store.itineraryDays.count, icon: "mappin.and.ellipse")
         }
     }
 
@@ -131,7 +131,7 @@ struct StatsView: View {
                     .foregroundColor(AppTheme.primary)
                 Text("No stats yet")
                     .font(.headline)
-                Text("Add a destination to see visit, packing, and phrase charts.")
+                Text("Add a trip with walking stops to see visit, packing, and phrase charts.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)

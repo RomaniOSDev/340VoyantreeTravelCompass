@@ -33,7 +33,13 @@ struct PhrasePracticeView: View {
                                 .font(AppTheme.displayTitle)
                                 .multilineTextAlignment(.center)
                                 .foregroundColor(.primary)
-                                .frame(maxWidth: .infinity, minHeight: 120)
+                                .frame(maxWidth: .infinity, minHeight: 96)
+                            if !showTranslation, !current.transliteration.isEmpty {
+                                Text(current.transliteration)
+                                    .font(.subheadline)
+                                    .foregroundColor(AppTheme.primary)
+                                    .multilineTextAlignment(.center)
+                            }
                             Text(showTranslation ? "Tap to hide" : "Tap to reveal")
                                 .font(.caption)
                                 .foregroundColor(.secondary)

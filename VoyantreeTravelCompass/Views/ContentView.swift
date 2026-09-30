@@ -1,81 +1,67 @@
+import CoreLocation
 import SwiftUI
 
 struct ContentView: View {
     @StateObject private var store = AppDataStore.shared
+    @StateObject private var locator = CompassLocationManager()
     @State private var showForm = false
     @State private var showSettings = false
     @State private var showStats = false
-    @State private var showTutorial = false
-    @State private var query = ""
-    @State private var filter: WishlistFilter = .all
-    @State private var sort: WishlistSort = .date
 
-    private var nextTrip: Destination? {
-        let upcoming = store.destinations.filter { !$0.visited }
-        if let current = upcoming.first(where: \.isHappeningNow) {
-            return current
-        }
-        return upcoming
-            .filter { $0.daysUntilStart >= 0 }
-            .sorted { $0.date < $1.date }
-            .first
-            ?? upcoming.sorted { $0.date < $1.date }.first
+    private var trip: Destination? { store.currentTrip }
+
+    private var nextStop: RouteStop? {
+        guard let trip else { return nil }
+        return store.nextStop(for: trip.id, from: locator.userCoordinate)
     }
 
-    private var visibleDestinations: [Destination] {
-        var items = store.destinations
-        switch filter {
-        case .all: break
-        case .upcoming: items = items.filter { !$0.visited }
-        case .visited: items = items.filter(\.visited)
+    private var bearing: Double? {
+        guard let nextStop, nextStop.isPinned else { return nil }
+        if let user = locator.userCoordinate {
+            return GeoMath.bearing(from: user, to: nextStop.coordinate)
         }
-        if !query.isEmpty {
-            items = items.filter { matches($0, query: query) }
+        if let previous = previousPinned(before: nextStop) {
+            return GeoMath.bearing(from: previous.coordinate, to: nextStop.coordinate)
         }
-        switch sort {
-        case .date:
-            items.sort { $0.date < $1.date }
-        case .name:
-            items.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        case .country:
-            items.sort { $0.country.localizedCaseInsensitiveCompare($1.country) == .orderedAscending }
-        }
-        return items
+        return nil
+    }
+
+    private var distanceMeters: CLLocationDistance? {
+        guard let nextStop, nextStop.isPinned, let user = locator.userCoordinate else { return nil }
+        return GeoMath.distance(user, nextStop.coordinate)
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    header
-                    if let nextTrip, query.isEmpty, filter != .visited {
-                        countdownCard(nextTrip)
-                    }
-                    filterBar
-                    if store.destinations.isEmpty {
-                        emptyState
-                    } else if visibleDestinations.isEmpty {
-                        TicketCard {
-                            Text(query.isEmpty ? "No places in this filter." : "No matches for “\(query)”.")
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity)
-                        }
-                    } else {
-                        ForEach(visibleDestinations) { item in
-                            NavigationLink(value: item) {
-                                destinationRow(item)
+            ZStack {
+                Color.clear
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        header
+                        liveCompassCard
+                        if let trip {
+                            tripDayCard(trip)
+                            if let nextStop {
+                                nextStopCard(nextStop)
+                            } else {
+                                missingStopsCard(trip)
                             }
-                            .buttonStyle(.plain)
+                            packingCard(trip)
+                            phrasesCard(trip)
+                        } else {
+                            emptyState
                         }
                     }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 8)
+                    .padding(.bottom, 28)
                 }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 28)
+                .clearScrollBackground()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .screenBackdrop("BgPass")
-            .navigationTitle("Wishlist")
+            .navigationTitle("Next Bearing")
             .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $query, prompt: "Places, tasks, phrases")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
@@ -86,6 +72,16 @@ struct ContentView: View {
                             .frame(width: 44, height: 44)
                     }
                     .accessibilityIdentifier("open_settings")
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink {
+                        WishlistView()
+                    } label: {
+                        Image(systemName: "list.bullet.rectangle")
+                            .foregroundColor(AppTheme.primary)
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityIdentifier("open_wishlist")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -127,15 +123,11 @@ struct ContentView: View {
                 .preferredColorScheme(.dark)
                 .environmentObject(store)
             }
-            .alert("Plan Your Route", isPresented: $showTutorial) {
-                Button("Got it", role: .cancel) { }
-            } message: {
-                Text("Add a place, then generate a packing list and key phrases from its detail screen.")
-            }
             .onAppear {
-                if store.destinations.isEmpty {
-                    showTutorial = true
-                }
+                locator.requestAndStart()
+            }
+            .onDisappear {
+                locator.stopUpdates()
             }
         }
         .tint(AppTheme.primary)
@@ -145,106 +137,239 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ZStack(alignment: .bottomLeading) {
-                Image("BannerFlight")
-                    .resizable()
-                    .scaledToFill()
-                    .ticketClip(height: 148)
-                    .overlay(alignment: .bottom) {
-                        LinearGradient(
-                            colors: [.clear, AppTheme.background.opacity(0.88)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .clipShape(TicketShape(notchRadius: 11, cornerRadius: 14))
-                        .frame(height: 70)
-                    }
-                HStack(alignment: .bottom, spacing: 12) {
-                    CompassDial(size: 52)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("ROUTE LOG")
-                            .font(AppTheme.trackedLabel)
-                            .tracking(1.6)
-                            .foregroundColor(AppTheme.primary)
-                        Text("Upcoming places")
-                            .font(AppTheme.placeTitle)
-                            .foregroundColor(.primary)
-                    }
-                }
-                .padding(16)
-            }
-            Text("Tap a boarding pass to pack, phrase, and mark the visit.")
+        VStack(alignment: .leading, spacing: 8) {
+            Text("TODAY")
+                .font(AppTheme.trackedLabel)
+                .tracking(1.6)
+                .foregroundColor(AppTheme.primary)
+            Text("Point the gold needle at the next walking stop.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
     }
 
-    private func countdownCard(_ item: Destination) -> some View {
-        NavigationLink(value: item) {
+    private var liveCompassCard: some View {
+        TicketCard {
+            VStack(spacing: 16) {
+                LiveBearingCompass(
+                    heading: locator.heading,
+                    bearing: bearing,
+                    size: 200
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+
+                if locator.isDenied {
+                    Text("Location is off. Enable it to lock the needle on your next stop.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    .frame(minHeight: 44)
+                } else if !locator.isAuthorized {
+                    GoldActionButton(title: "Enable live compass", systemImage: "location.north.line") {
+                        locator.requestAndStart()
+                    }
+                } else if locator.location == nil {
+                    Text("Acquiring GPS… keep the phone level.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                } else if let distanceMeters, let nextStop {
+                    Text(nextStop.title)
+                        .font(AppTheme.placeTitle)
+                        .multilineTextAlignment(.center)
+                    Text("\(GeoMath.formatDistance(distanceMeters)) · \(GeoMath.formatWalking(distanceMeters))")
+                        .font(.title3.monospacedDigit().weight(.semibold))
+                        .foregroundColor(AppTheme.primary)
+                    if let heading = locator.heading, let bearing {
+                        Text("Bearing \(Int(bearing.rounded()))° · heading \(Int(heading.rounded()))°")
+                            .font(.caption.monospacedDigit())
+                            .foregroundColor(.secondary)
+                    } else if !locator.headingAvailable {
+                        Text("Heading unavailable on this device. Distance is live.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                } else if bearing != nil {
+                    Text("No GPS fix yet. Needle shows the route bearing between pinned stops.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                } else {
+                    Text("Pin a stop on the route to give the compass a target.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func tripDayCard(_ trip: Destination) -> some View {
+        NavigationLink(value: trip) {
             TicketCard {
                 HStack(alignment: .center, spacing: 12) {
                     CompassDial(size: 42)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("NEXT BEARING")
+                        Text(trip.isHappeningNow ? "CURRENT TRIP · DAY \(trip.currentTripDay)" : "NEXT TRIP")
                             .font(AppTheme.trackedLabel)
                             .tracking(1.2)
                             .foregroundColor(AppTheme.primary)
-                        Text(item.name)
+                        Text(trip.name)
                             .font(AppTheme.placeTitle)
-                        Text(item.country)
+                        Text("\(trip.country) · \(trip.scenario.rawValue)")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        Text(item.dateRangeText)
+                        Text(trip.countdownText)
                             .font(.caption.monospaced())
                             .foregroundColor(.secondary)
                     }
                     Spacer()
-                    VStack(spacing: 4) {
-                        Text(item.countdownText)
-                            .font(.subheadline.weight(.semibold))
-                            .multilineTextAlignment(.trailing)
-                        Text("\(item.durationDays)d")
-                            .font(.caption.monospacedDigit())
-                            .foregroundColor(.secondary)
-                    }
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.secondary)
                 }
             }
         }
         .buttonStyle(.plain)
     }
 
-    private var filterBar: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(WishlistFilter.allCases) { option in
-                        CompassChip(title: option.rawValue, selected: filter == option) {
-                            filter = option
+    private func nextStopCard(_ stop: RouteStop) -> some View {
+        TicketCard {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("NEXT STOP")
+                    .font(AppTheme.trackedLabel)
+                    .tracking(1.2)
+                    .foregroundColor(AppTheme.primary)
+                Text(stop.title)
+                    .font(AppTheme.placeTitle)
+                if !stop.notes.isEmpty {
+                    Text(stop.notes)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                Text(String(format: "Stop %d · %.5f, %.5f", stop.stopIndex, stop.latitude, stop.longitude))
+                    .font(.caption.monospacedDigit())
+                    .foregroundColor(.secondary)
+                if let previous = previousPinned(before: stop) {
+                    let meters = GeoMath.distance(previous.coordinate, stop.coordinate)
+                    Text("From \(previous.title): \(GeoMath.formatDistance(meters)) · \(GeoMath.formatWalking(meters))")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.primary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func missingStopsCard(_ trip: Destination) -> some View {
+        NavigationLink {
+            ItineraryView(destinationId: trip.id)
+        } label: {
+            TicketCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("NO PINNED STOPS")
+                        .font(AppTheme.trackedLabel)
+                        .tracking(1.2)
+                        .foregroundColor(AppTheme.primary)
+                    Text("Drop map pins so the compass has a live target.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func packingCard(_ trip: Destination) -> some View {
+        let open = store.openPacking(for: trip.id)
+        return NavigationLink {
+            TripTasksView(destinationId: trip.id)
+        } label: {
+            TicketCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("STILL TO PACK")
+                        .font(AppTheme.trackedLabel)
+                        .tracking(1.2)
+                        .foregroundColor(AppTheme.primary)
+                    if open.isEmpty {
+                        Text("Packing kit is clear for this trip.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(open.prefix(3)) { task in
+                            HStack(spacing: 8) {
+                                Image(systemName: "circle")
+                                    .foregroundColor(AppTheme.primary)
+                                Text(task.title)
+                                    .font(.subheadline)
+                            }
+                        }
+                        if open.count > 3 {
+                            Text("+\(open.count - 3) more")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Menu {
-                ForEach(WishlistSort.allCases) { option in
-                    Button(option.rawValue) { sort = option }
-                }
-            } label: {
-                Label("Sort by \(sort.rawValue.lowercased())", systemImage: "arrow.up.arrow.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(AppTheme.primary)
-            }
-            .frame(minHeight: 44, alignment: .leading)
         }
+        .buttonStyle(.plain)
+    }
+
+    private func phrasesCard(_ trip: Destination) -> some View {
+        let lines = store.phrasesForToday(destination: trip)
+        return NavigationLink {
+            PhrasesView(destinationId: trip.id)
+        } label: {
+            TicketCard {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("PHRASES FOR THIS DAY")
+                        .font(AppTheme.trackedLabel)
+                        .tracking(1.2)
+                        .foregroundColor(AppTheme.primary)
+                    if lines.isEmpty {
+                        Text("No phrase pack on this trip yet.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(lines) { phrase in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(phrase.original)
+                                    .font(.headline)
+                                if !phrase.transliteration.isEmpty {
+                                    Text(phrase.transliteration)
+                                        .font(.caption)
+                                        .foregroundColor(AppTheme.primary)
+                                }
+                                Text(phrase.translation)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.bottom, 4)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {
         TicketCard {
             VStack(spacing: 12) {
                 CompassDial(size: 56)
-                Text("Start Your Journey")
+                Text("No active trip")
                     .font(AppTheme.placeTitle)
-                Text("Add the first destination you want to stand in.")
+                Text("Add a destination with pinned walking stops to give the compass a bearing.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -257,90 +382,9 @@ struct ContentView: View {
         }
     }
 
-    private func destinationRow(_ item: Destination) -> some View {
-        TicketCard {
-            HStack(alignment: .top, spacing: 12) {
-                if let cover = CoverImageStore.load(item.coverFileName) {
-                    Image(uiImage: cover)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 56, height: 56)
-                        .clipShape(TicketShape(notchRadius: 6, cornerRadius: 8))
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(item.name)
-                        .font(AppTheme.placeTitle)
-                        .foregroundColor(.primary)
-                    Text(item.country.uppercased())
-                        .font(AppTheme.trackedLabel)
-                        .tracking(1.1)
-                        .foregroundColor(.secondary)
-                    Text(item.dateRangeText)
-                        .font(.caption.monospaced())
-                        .foregroundColor(AppTheme.primary)
-                    if !query.isEmpty, let hint = matchHint(item, query: query) {
-                        Text(hint)
-                            .font(.caption)
-                            .foregroundColor(AppTheme.accent)
-                            .lineLimit(1)
-                    } else if !item.notes.isEmpty {
-                        Text(item.notes)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                Spacer()
-                VStack(spacing: 8) {
-                    Image(systemName: item.visited ? "checkmark.seal.fill" : "airplane")
-                        .foregroundColor(item.visited ? AppTheme.accent : AppTheme.primary)
-                    Text(item.visited ? "Visited" : "Open")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-    }
-
-    private func matches(_ item: Destination, query: String) -> Bool {
-        let fields = [item.name, item.country, item.notes, item.journal, item.climate]
-        if fields.contains(where: { $0.localizedCaseInsensitiveContains(query) }) {
-            return true
-        }
-        if store.tripTasks.contains(where: { $0.destinationId == item.id && $0.title.localizedCaseInsensitiveContains(query) }) {
-            return true
-        }
-        if store.phrases.contains(where: {
-            $0.destinationId == item.id &&
-            ($0.original.localizedCaseInsensitiveContains(query) || $0.translation.localizedCaseInsensitiveContains(query))
-        }) {
-            return true
-        }
-        if store.itineraryDays.contains(where: {
-            $0.destinationId == item.id &&
-            ($0.title.localizedCaseInsensitiveContains(query) || $0.notes.localizedCaseInsensitiveContains(query))
-        }) {
-            return true
-        }
-        return false
-    }
-
-    private func matchHint(_ item: Destination, query: String) -> String? {
-        if let task = store.tripTasks.first(where: { $0.destinationId == item.id && $0.title.localizedCaseInsensitiveContains(query) }) {
-            return "Task: \(task.title)"
-        }
-        if let phrase = store.phrases.first(where: {
-            $0.destinationId == item.id &&
-            ($0.original.localizedCaseInsensitiveContains(query) || $0.translation.localizedCaseInsensitiveContains(query))
-        }) {
-            return "Phrase: \(phrase.original)"
-        }
-        if let day = store.itineraryDays.first(where: {
-            $0.destinationId == item.id &&
-            ($0.title.localizedCaseInsensitiveContains(query) || $0.notes.localizedCaseInsensitiveContains(query))
-        }) {
-            return "Day \(day.dayIndex): \(day.title)"
-        }
-        return nil
+    private func previousPinned(before stop: RouteStop) -> RouteStop? {
+        store.stops(for: stop.destinationId)
+            .filter(\.isPinned)
+            .last { $0.stopIndex < stop.stopIndex }
     }
 }

@@ -8,6 +8,8 @@ struct PhraseFormView: View {
 
     @State private var original = ""
     @State private var translation = ""
+    @State private var transliteration = ""
+    @State private var language = PhraseLanguage.french.rawValue
     @State private var category = PhraseCategory.greeting.rawValue
     @State private var error: String?
 
@@ -16,7 +18,13 @@ struct PhraseFormView: View {
             Form {
                 Section("Phrase") {
                     TextField("Original", text: $original)
-                    TextField("Translation", text: $translation)
+                    TextField("Transliteration", text: $transliteration)
+                    TextField("English", text: $translation)
+                    Picker("Language", selection: $language) {
+                        ForEach(PhraseLanguage.allCases) { item in
+                            Text(item.title).tag(item.rawValue)
+                        }
+                    }
                     Picker("Category", selection: $category) {
                         ForEach(PhraseCategory.allCases) { item in
                             Text(item.rawValue).tag(item.rawValue)
@@ -45,7 +53,11 @@ struct PhraseFormView: View {
                 if let existing {
                     original = existing.original
                     translation = existing.translation
+                    transliteration = existing.transliteration
+                    language = existing.language
                     category = existing.category
+                } else if let destination = store.destinations.first(where: { $0.id == destinationId }) {
+                    language = destination.phraseLanguage
                 }
             }
         }
@@ -65,7 +77,9 @@ struct PhraseFormView: View {
             destinationId: destinationId,
             original: o,
             translation: t,
-            category: category
+            category: category,
+            transliteration: transliteration.trimmingCharacters(in: .whitespacesAndNewlines),
+            language: language
         )
         store.upsertPhrase(item)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()

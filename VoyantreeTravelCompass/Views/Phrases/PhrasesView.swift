@@ -25,13 +25,16 @@ struct PhrasesView: View {
         return list.filter {
             $0.original.localizedCaseInsensitiveContains(query) ||
             $0.translation.localizedCaseInsensitiveContains(query) ||
+            $0.transliteration.localizedCaseInsensitiveContains(query) ||
             $0.category.localizedCaseInsensitiveContains(query)
         }
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+        ZStack {
+            Color.clear
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
                 Image("BannerPhrases")
                     .resizable()
                     .scaledToFill()
@@ -53,9 +56,9 @@ struct PhrasesView: View {
                             Image(systemName: "globe")
                                 .font(.system(size: 36))
                                 .foregroundColor(AppTheme.primary)
-                            Text("Add your first destination")
+                            Text("No phrases yet")
                                 .font(.headline)
-                            Text("Save useful lines before you travel.")
+                            Text("This trip is missing a language pack.")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -76,6 +79,11 @@ struct PhrasesView: View {
                                     .foregroundColor(AppTheme.primary)
                                 Text(item.original)
                                     .font(AppTheme.placeTitle)
+                                if !item.transliteration.isEmpty {
+                                    Text(item.transliteration)
+                                        .font(.caption)
+                                        .foregroundColor(AppTheme.primary)
+                                }
                                 Text(item.translation)
                                     .foregroundColor(.secondary)
                                 HStack {
@@ -128,9 +136,12 @@ struct PhrasesView: View {
                 GoldActionButton(title: "Add phrase", systemImage: "plus") {
                     showForm = true
                 }
+                }
+                .padding(18)
             }
-            .padding(18)
+            .clearScrollBackground()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenBackdrop("BgPass")
         .navigationTitle("Phrases")
         .searchable(text: $query)

@@ -57,6 +57,8 @@ struct SettingsView: View {
             .alert("Erase all saved trips?", isPresented: $confirmReset) {
                 Button("Reset", role: .destructive) { store.resetAllData() }
                 Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Sample walking trips will be restored so the compass has a target.")
             }
         }
         .tint(AppTheme.primary)

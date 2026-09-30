@@ -12,9 +12,10 @@ struct Destination: Codable, Identifiable, Hashable {
     var climate: String
     var journal: String
     var coverFileName: String?
+    var phraseLanguage: String
 
     enum CodingKeys: String, CodingKey {
-        case id, name, country, date, endDate, notes, visited, timezone, climate, journal, coverFileName
+        case id, name, country, date, endDate, notes, visited, timezone, climate, journal, coverFileName, phraseLanguage
     }
 
     init(
@@ -28,7 +29,8 @@ struct Destination: Codable, Identifiable, Hashable {
         timezone: String,
         climate: String,
         journal: String = "",
-        coverFileName: String? = nil
+        coverFileName: String? = nil,
+        phraseLanguage: String = PhraseLanguage.french.rawValue
     ) {
         self.id = id
         self.name = name
@@ -41,6 +43,7 @@ struct Destination: Codable, Identifiable, Hashable {
         self.climate = climate
         self.journal = journal
         self.coverFileName = coverFileName
+        self.phraseLanguage = phraseLanguage
     }
 
     init(from decoder: Decoder) throws {
@@ -53,9 +56,15 @@ struct Destination: Codable, Identifiable, Hashable {
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         visited = try container.decodeIfPresent(Bool.self, forKey: .visited) ?? false
         timezone = try container.decodeIfPresent(String.self, forKey: .timezone) ?? "Local"
-        climate = try container.decodeIfPresent(String.self, forKey: .climate) ?? ClimateKind.temperate.rawValue
+        let rawClimate = try container.decodeIfPresent(String.self, forKey: .climate) ?? TripScenario.cityWeekend.rawValue
+        climate = TripScenario.migrated(from: rawClimate).rawValue
         journal = try container.decodeIfPresent(String.self, forKey: .journal) ?? ""
         coverFileName = try container.decodeIfPresent(String.self, forKey: .coverFileName)
+        phraseLanguage = try container.decodeIfPresent(String.self, forKey: .phraseLanguage) ?? PhraseLanguage.french.rawValue
+    }
+
+    var scenario: TripScenario {
+        TripScenario.migrated(from: climate)
     }
 
     var durationDays: Int {
@@ -91,8 +100,16 @@ struct Destination: Codable, Identifiable, Hashable {
         return today >= start && today <= end
     }
 
+    var currentTripDay: Int {
+        guard isHappeningNow else { return 1 }
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        let today = calendar.startOfDay(for: Date())
+        return (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1
+    }
+
     var countdownText: String {
-        if isHappeningNow { return "Happening now" }
+        if isHappeningNow { return "Happening now · day \(currentTripDay)" }
         switch daysUntilStart {
         case 0: return "Starts today"
         case 1: return "Tomorrow"
@@ -116,17 +133,29 @@ struct PhraseItem: Codable, Identifiable, Hashable {
     var original: String
     var translation: String
     var category: String
+    var transliteration: String
+    var language: String
 
     enum CodingKeys: String, CodingKey {
-        case id, destinationId, original, translation, category
+        case id, destinationId, original, translation, category, transliteration, language
     }
 
-    init(id: UUID, destinationId: UUID, original: String, translation: String, category: String = PhraseCategory.greeting.rawValue) {
+    init(
+        id: UUID,
+        destinationId: UUID,
+        original: String,
+        translation: String,
+        category: String = PhraseCategory.greeting.rawValue,
+        transliteration: String = "",
+        language: String = PhraseLanguage.french.rawValue
+    ) {
         self.id = id
         self.destinationId = destinationId
         self.original = original
         self.translation = translation
         self.category = category
+        self.transliteration = transliteration
+        self.language = language
     }
 
     init(from decoder: Decoder) throws {
@@ -136,15 +165,69 @@ struct PhraseItem: Codable, Identifiable, Hashable {
         original = try container.decode(String.self, forKey: .original)
         translation = try container.decode(String.self, forKey: .translation)
         category = try container.decodeIfPresent(String.self, forKey: .category) ?? PhraseCategory.greeting.rawValue
+        transliteration = try container.decodeIfPresent(String.self, forKey: .transliteration) ?? ""
+        language = try container.decodeIfPresent(String.self, forKey: .language) ?? PhraseLanguage.french.rawValue
     }
 }
 
-struct ItineraryDay: Codable, Identifiable, Hashable {
+struct RouteStop: Codable, Identifiable, Hashable {
     var id: UUID
     var destinationId: UUID
-    var dayIndex: Int
+    var stopIndex: Int
     var title: String
     var notes: String
+    var latitude: Double
+    var longitude: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id, destinationId, stopIndex, dayIndex, title, notes, latitude, longitude
+    }
+
+    init(
+        id: UUID,
+        destinationId: UUID,
+        stopIndex: Int,
+        title: String,
+        notes: String,
+        latitude: Double,
+        longitude: Double
+    ) {
+        self.id = id
+        self.destinationId = destinationId
+        self.stopIndex = stopIndex
+        self.title = title
+        self.notes = notes
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        destinationId = try container.decode(UUID.self, forKey: .destinationId)
+        stopIndex = try container.decodeIfPresent(Int.self, forKey: .stopIndex)
+            ?? container.decodeIfPresent(Int.self, forKey: .dayIndex)
+            ?? 1
+        title = try container.decode(String.self, forKey: .title)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        latitude = try container.decodeIfPresent(Double.self, forKey: .latitude) ?? 0
+        longitude = try container.decodeIfPresent(Double.self, forKey: .longitude) ?? 0
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(destinationId, forKey: .destinationId)
+        try container.encode(stopIndex, forKey: .stopIndex)
+        try container.encode(title, forKey: .title)
+        try container.encode(notes, forKey: .notes)
+        try container.encode(latitude, forKey: .latitude)
+        try container.encode(longitude, forKey: .longitude)
+    }
+
+    var isPinned: Bool {
+        abs(latitude) > 0.0001 || abs(longitude) > 0.0001
+    }
 }
 
 enum TaskCategory: String, CaseIterable {
@@ -162,37 +245,95 @@ enum PhraseCategory: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum ClimateKind: String, CaseIterable, Identifiable {
-    case temperate = "Temperate"
-    case tropical = "Tropical"
-    case cold = "Cold"
+enum PhraseLanguage: String, CaseIterable, Identifiable {
+    case japanese = "JA"
+    case french = "FR"
+    case spanish = "ES"
+    case italian = "IT"
 
     var id: String { rawValue }
 
-    static func packingTitles(for climate: String) -> [String] {
-        let key = climate.lowercased()
-        if key.contains("tropic") || key.contains("hot") || key.contains("humid") {
-            return [
-                "Light breathable layers",
-                "Sun protection and hat",
-                "Insect repellent",
-                "Reusable water bottle"
-            ]
+    var title: String {
+        switch self {
+        case .japanese: return "Japanese"
+        case .french: return "French"
+        case .spanish: return "Spanish"
+        case .italian: return "Italian"
         }
-        if key.contains("cold") || key.contains("winter") || key.contains("alpine") {
+    }
+}
+
+enum TripScenario: String, CaseIterable, Identifiable {
+    case cityWeekend = "City weekend"
+    case winterHike = "Winter hike"
+    case beach = "Beach"
+    case longHaulFlight = "Long-haul flight"
+
+    var id: String { rawValue }
+
+    static func migrated(from raw: String) -> TripScenario {
+        if let match = TripScenario(rawValue: raw) { return match }
+        let key = raw.lowercased()
+        if key.contains("tropic") || key.contains("hot") || key.contains("beach") {
+            return .beach
+        }
+        if key.contains("cold") || key.contains("winter") || key.contains("alpine") || key.contains("hike") {
+            return .winterHike
+        }
+        if key.contains("flight") || key.contains("long") {
+            return .longHaulFlight
+        }
+        return .cityWeekend
+    }
+
+    var packingTitles: [String] {
+        switch self {
+        case .cityWeekend:
             return [
-                "Insulated coat",
-                "Warm base layers",
+                "Compact daypack",
+                "Broken-in walking shoes",
+                "Light rain shell",
+                "Transit card or tickets",
+                "Phone battery pack",
+                "Evening layer",
+                "Offline city map",
+                "Small locker lock"
+            ]
+        case .winterHike:
+            return [
+                "Insulated shell and puffy",
+                "Warm merino base layers",
                 "Waterproof boots",
-                "Gloves and beanie"
+                "Microspikes or traction",
+                "Gloves and beanie",
+                "Headlamp with spare cell",
+                "Hot-drink flask",
+                "Emergency bivy or blanket"
+            ]
+        case .beach:
+            return [
+                "Reef-safe sunscreen",
+                "Quick-dry towel",
+                "Swimwear and cover-up",
+                "Water shoes",
+                "Insect repellent",
+                "Dry bag for phone",
+                "Reusable water bottle",
+                "After-sun lotion"
+            ]
+        case .longHaulFlight:
+            return [
+                "Compression socks",
+                "Neck pillow",
+                "Empty bottle for airside fill",
+                "Eye mask and earplugs",
+                "Cables plus plug adapter",
+                "Cabin snacks and electrolytes",
+                "Warm cabin layer",
+                "Medication in carry-on",
+                "Documents in one pouch"
             ]
         }
-        return [
-            "Weather layers",
-            "Comfortable walking shoes",
-            "Light rain jacket",
-            "Daypack"
-        ]
     }
 }
 

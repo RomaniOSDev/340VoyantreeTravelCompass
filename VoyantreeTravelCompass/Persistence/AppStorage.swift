@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CoreLocation
 
 extension Notification.Name {
     static let dataReset = Notification.Name("dataReset")
@@ -12,7 +13,7 @@ final class AppDataStore: ObservableObject {
     @Published var destinations: [Destination] = []
     @Published var tripTasks: [TripTask] = []
     @Published var phrases: [PhraseItem] = []
-    @Published var itineraryDays: [ItineraryDay] = []
+    @Published var itineraryDays: [RouteStop] = []
     @Published var lastViewedDestination: UUID?
     @Published var activeTripId: UUID?
     @Published var selectedLocaleID: UUID?
@@ -25,6 +26,7 @@ final class AppDataStore: ObservableObject {
     private let lastViewedKey = "lastViewedDestination"
     private let activeTripKey = "activeTripId"
     private let localeKey = "selectedLocaleID"
+    private let catalogSeedKey = "catalogSeeded_v1"
 
     private init() {
         load()
@@ -39,7 +41,7 @@ final class AppDataStore: ObservableObject {
         destinations = decode([Destination].self, key: destinationsKey) ?? []
         tripTasks = decode([TripTask].self, key: tasksKey) ?? []
         phrases = decode([PhraseItem].self, key: phrasesKey) ?? []
-        itineraryDays = decode([ItineraryDay].self, key: itineraryKey) ?? []
+        itineraryDays = decode([RouteStop].self, key: itineraryKey) ?? []
         if let raw = defaults.string(forKey: lastViewedKey) {
             lastViewedDestination = UUID(uuidString: raw)
         }
@@ -48,6 +50,9 @@ final class AppDataStore: ObservableObject {
         }
         if let raw = defaults.string(forKey: localeKey) {
             selectedLocaleID = UUID(uuidString: raw)
+        }
+        if destinations.isEmpty {
+            seedCatalog()
         }
         destinations.filter { !$0.visited }.forEach { TripReminderScheduler.refresh(for: $0) }
     }
@@ -62,13 +67,66 @@ final class AppDataStore: ObservableObject {
         defaults.set(selectedLocaleID?.uuidString, forKey: localeKey)
     }
 
-    func upsertDestination(_ item: Destination) {
+    var currentTrip: Destination? {
+        let upcoming = destinations.filter { !$0.visited }
+        if let happening = upcoming.first(where: \.isHappeningNow) {
+            return happening
+        }
+        if let active = upcoming.first(where: { $0.id == activeTripId }) {
+            return active
+        }
+        return upcoming
+            .filter { $0.daysUntilStart >= 0 }
+            .sorted { $0.date < $1.date }
+            .first
+            ?? upcoming.sorted { $0.date < $1.date }.first
+    }
+
+    func stops(for destinationId: UUID) -> [RouteStop] {
+        itineraryDays
+            .filter { $0.destinationId == destinationId }
+            .sorted { $0.stopIndex < $1.stopIndex }
+    }
+
+    func nextStop(for destinationId: UUID, from user: CLLocationCoordinate2D?) -> RouteStop? {
+        let list = stops(for: destinationId).filter(\.isPinned)
+        guard !list.isEmpty else { return nil }
+        guard let user else { return list.first }
+        for stop in list {
+            if GeoMath.distance(user, stop.coordinate) > GeoMath.arrivalThreshold {
+                return stop
+            }
+        }
+        return list.last
+    }
+
+    func phrasesForToday(destination: Destination) -> [PhraseItem] {
+        let all = phrases.filter { $0.destinationId == destination.id }
+        guard !all.isEmpty else { return [] }
+        let start = ((destination.currentTripDay - 1) * 3) % all.count
+        var slice: [PhraseItem] = []
+        for offset in 0..<min(3, all.count) {
+            slice.append(all[(start + offset) % all.count])
+        }
+        return slice
+    }
+
+    func openPacking(for destinationId: UUID) -> [TripTask] {
+        tripTasks.filter { $0.destinationId == destinationId && !$0.completed }
+    }
+
+    func upsertDestination(_ item: Destination, attachKits: Bool = false) {
+        let isNew = !destinations.contains { $0.id == item.id }
         if let index = destinations.firstIndex(where: { $0.id == item.id }) {
             destinations[index] = item
         } else {
             destinations.insert(item, at: 0)
         }
+        if isNew && attachKits {
+            attachCatalogKits(for: item)
+        }
         lastViewedDestination = item.id
+        activeTripId = item.id
         save()
         TripReminderScheduler.refresh(for: item)
     }
@@ -135,54 +193,39 @@ final class AppDataStore: ObservableObject {
         save()
     }
 
-    func upsertItineraryDay(_ item: ItineraryDay) {
+    func upsertStop(_ item: RouteStop) {
         if let index = itineraryDays.firstIndex(where: { $0.id == item.id }) {
             itineraryDays[index] = item
         } else {
             itineraryDays.append(item)
         }
-        itineraryDays.sort { $0.dayIndex < $1.dayIndex }
+        itineraryDays.sort { $0.stopIndex < $1.stopIndex }
+        activeTripId = item.destinationId
         save()
     }
 
-    func deleteItineraryDay(_ id: UUID) {
+    func deleteStop(_ id: UUID) {
         itineraryDays.removeAll { $0.id == id }
         save()
     }
 
-    func prepareTrip(for destination: Destination) {
-        let existing = tripTasks.filter { $0.destinationId == destination.id }
-        if existing.isEmpty {
-            var seeds: [TripTask] = [
-                TripTask(id: UUID(), destinationId: destination.id, title: "Confirm lodging", completed: false, category: TaskCategory.preDeparture.rawValue),
-                TripTask(id: UUID(), destinationId: destination.id, title: "Check entry documents", completed: false, category: TaskCategory.preDeparture.rawValue),
-                TripTask(id: UUID(), destinationId: destination.id, title: "Local transport plan", completed: false, category: TaskCategory.onArrival.rawValue)
-            ]
-            seeds.append(contentsOf: ClimateKind.packingTitles(for: destination.climate).map { title in
-                TripTask(id: UUID(), destinationId: destination.id, title: title, completed: false, category: TaskCategory.packing.rawValue)
-            })
-            tripTasks.append(contentsOf: seeds)
+    func attachCatalogKits(for destination: Destination) {
+        if tripTasks.filter({ $0.destinationId == destination.id }).isEmpty {
+            tripTasks.append(contentsOf: TripCatalog.packingTasks(for: destination))
         }
-        let existingPhrases = phrases.filter { $0.destinationId == destination.id }
-        if existingPhrases.isEmpty {
-            let seeds = [
-                PhraseItem(id: UUID(), destinationId: destination.id, original: "Hello", translation: "Hello", category: PhraseCategory.greeting.rawValue),
-                PhraseItem(id: UUID(), destinationId: destination.id, original: "Thank you", translation: "Thank you", category: PhraseCategory.greeting.rawValue),
-                PhraseItem(id: UUID(), destinationId: destination.id, original: "Where is the station?", translation: "Where is the station?", category: PhraseCategory.transport.rawValue),
-                PhraseItem(id: UUID(), destinationId: destination.id, original: "A table for two, please", translation: "A table for two, please", category: PhraseCategory.food.rawValue),
-                PhraseItem(id: UUID(), destinationId: destination.id, original: "I need help", translation: "I need help", category: PhraseCategory.emergency.rawValue)
-            ]
-            phrases.append(contentsOf: seeds)
+        if phrases.filter({ $0.destinationId == destination.id }).isEmpty {
+            phrases.append(contentsOf: TripCatalog.phrasePack(
+                language: destination.phraseLanguage,
+                destinationId: destination.id
+            ))
         }
-        activeTripId = destination.id
-        selectedLocaleID = destination.id
         save()
     }
 
     func resetAllData() {
         destinations.forEach { CoverImageStore.delete($0.coverFileName) }
         TripReminderScheduler.cancelAll()
-        let keys = [destinationsKey, tasksKey, phrasesKey, itineraryKey, lastViewedKey, activeTripKey, localeKey]
+        let keys = [destinationsKey, tasksKey, phrasesKey, itineraryKey, lastViewedKey, activeTripKey, localeKey, catalogSeedKey]
         keys.forEach { defaults.removeObject(forKey: $0) }
         destinations = []
         tripTasks = []
@@ -191,10 +234,23 @@ final class AppDataStore: ObservableObject {
         lastViewedDestination = nil
         activeTripId = nil
         selectedLocaleID = nil
+        seedCatalog()
         NotificationCenter.default.post(name: .dataReset, object: nil)
     }
 
-    private func encode<T: Encodable>(_ value: T, key: String) {
+    private func seedCatalog() {
+        let bundle = TripCatalog.sampleBundle()
+        destinations = bundle.destinations
+        tripTasks = bundle.tasks
+        phrases = bundle.phrases
+        itineraryDays = bundle.stops
+        activeTripId = bundle.destinations.first(where: \.isHappeningNow)?.id ?? bundle.destinations.first?.id
+        lastViewedDestination = activeTripId
+        defaults.set(true, forKey: catalogSeedKey)
+        save()
+    }
+
+    private func encode<T: Encodable>(_ value: T, key: String) -> Void {
         if let data = try? JSONEncoder().encode(value) {
             defaults.set(data, forKey: key)
         }

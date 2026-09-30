@@ -1,6 +1,11 @@
 import SwiftUI
 
 extension View {
+    func clearScrollBackground() -> some View {
+        scrollContentBackground(.hidden)
+            .background(Color.clear)
+    }
+
     func screenBackdrop(_ imageName: String) -> some View {
         self
             .frame(maxWidth: .infinity, maxHeight: .infinity)

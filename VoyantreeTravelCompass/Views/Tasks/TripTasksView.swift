@@ -15,8 +15,10 @@ struct TripTasksView: View {
     private var doneTasks: [TripTask] { tasks.filter { $0.completed } }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+        ZStack {
+            Color.clear
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
                 Image("BannerPack")
                     .resizable()
                     .scaledToFill()
@@ -30,7 +32,7 @@ struct TripTasksView: View {
                                 .foregroundColor(AppTheme.primary)
                             Text("No Tasks Yet")
                                 .font(.headline)
-                            Text("Add the first preparation step for this place.")
+                            Text("Add the first kit item for this walking trip.")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
@@ -59,7 +61,10 @@ struct TripTasksView: View {
                 }
             }
             .padding(18)
+            }
+            .clearScrollBackground()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .screenBackdrop("BgPass")
         .navigationTitle("Tasks")
         .sheet(isPresented: $showForm) {

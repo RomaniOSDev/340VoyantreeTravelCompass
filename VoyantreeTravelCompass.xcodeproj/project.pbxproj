@@ -24,15 +24,20 @@
 		6BBE9B97AFF746FD669ABF2A /* DestinationFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D843CFC0F9AF23A07FEF16B /* DestinationFormView.swift */; };
 		8C8F4FA2A9E8773FC2996153 /* AppStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 398EE4350DD3BFBDD28A0BCF /* AppStorage.swift */; };
 		8D4E15F6A7B90C41D2E53F64 /* TripReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C3D04E5F6A89B30C1D42E53 /* TripReminderScheduler.swift */; };
+		A6FB9450B3B80FA6F4DB8D7A /* RoutePinPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5EA8349A2A7EF95E3CA7C69 /* RoutePinPicker.swift */; };
 		A7E14C92B6D05F18C3A29B41 /* KeyboardDismiss.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C8D47B0E9A25F64D1B38C70 /* KeyboardDismiss.swift */; };
 		B8F25D03C7E16A29D4B30C52 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9E58C1F0B36A75E2C49D81 /* StatsView.swift */; };
 		C6AB0836E89CAC7ABC5A86C8 /* PhraseFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BF3ABB6FC0B38ED736B34F /* PhraseFormView.swift */; };
+		C7E40D83A5F17B28D6B30592 /* CompassLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8F31C92B4D06E17C5A29481 /* CompassLocationManager.swift */; };
 		CA63F47EEE599358B1756EB6 /* PhrasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 935F859FDBFF2CBE28A0B09A /* PhrasesView.swift */; };
 		CF08EFC0075A78F1C50A7A5C /* ScreenBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41B0AF04854F6C24D0EE1E7F /* ScreenBackground.swift */; };
+		D0F53E94B7B29A40F8D52714 /* GeoMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9E42D83C6A18F39E7C41603 /* GeoMath.swift */; };
 		D6C494D2D226BA37A8FBF27A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB93422570B73428ADA4D91 /* SettingsView.swift */; };
+		E2B75016D9D4BC62B0F74936 /* TripCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A64F05C8C3AB51A9E63825 /* TripCatalog.swift */; };
 		E72B002B0C3102F86804142B /* TripTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6D762737E83F94CF8A4470 /* TripTasksView.swift */; };
 		E8FF4E9293E0C1F53CD2475D /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71ABC32134A6477F577DFE7 /* SceneDelegate.swift */; };
 		EB32ED08146E07D2DA99BB26 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 52FEFAAC35AF2CF897C812F4 /* LaunchScreen.storyboard */; };
+		F4D97238F1F6DE84D2B96B58 /* WishlistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3C86127E0E5CD73C1A85A47 /* WishlistView.swift */; };
 		FC16D68392EA8E10A8C47086 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6F20246149AC759757008583 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -58,13 +63,18 @@
 		935F859FDBFF2CBE28A0B09A /* PhrasesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhrasesView.swift; sourceTree = "<group>"; };
 		9E5F26A7B8C01D52E3F64075 /* PhrasePracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhrasePracticeView.swift; sourceTree = "<group>"; };
 		A4612B567CFE63D5FCE5459A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A8F31C92B4D06E17C5A29481 /* CompassLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompassLocationManager.swift; sourceTree = "<group>"; };
 		AD02B66156C224B20C4F611E /* AppLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLinks.swift; sourceTree = "<group>"; };
 		AFB93422570B73428ADA4D91 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B02AD77067DC24E91E2866CB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B9E42D83C6A18F39E7C41603 /* GeoMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoMath.swift; sourceTree = "<group>"; };
+		C1A64F05C8C3AB51A9E63825 /* TripCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCatalog.swift; sourceTree = "<group>"; };
 		CA5BAB508844B7C9DE27383E /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		D05B4AE1B372EBCDE50BBC15 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D3C86127E0E5CD73C1A85A47 /* WishlistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WishlistView.swift; sourceTree = "<group>"; };
 		D9EBEF38D12016202D143C48 /* VoyantreeTravelCompass.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoyantreeTravelCompass.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA828D9371803C1444357B9A /* TaskFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskFormView.swift; sourceTree = "<group>"; };
+		E5EA8349A2A7EF95E3CA7C69 /* RoutePinPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePinPicker.swift; sourceTree = "<group>"; };
 		E71ABC32134A6477F577DFE7 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		EBE13668E585BA662656BE1C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F0B0817C4A39A7FA778A2EF2 /* TravelModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelModels.swift; sourceTree = "<group>"; };
@@ -97,7 +107,9 @@
 				6F88744929C60C317D3AAF2E /* DestinationDetailView.swift */,
 				3D843CFC0F9AF23A07FEF16B /* DestinationFormView.swift */,
 				1A7148C9D0E23F7405186297 /* ItineraryView.swift */,
+				E5EA8349A2A7EF95E3CA7C69 /* RoutePinPicker.swift */,
 				3C9360E1F2A4519627308419 /* VisitJournalView.swift */,
+				D3C86127E0E5CD73C1A85A47 /* WishlistView.swift */,
 			);
 			path = Destinations;
 			sourceTree = "<group>";
@@ -194,6 +206,7 @@
 			isa = PBXGroup;
 			children = (
 				F0B0817C4A39A7FA778A2EF2 /* TravelModels.swift */,
+				C1A64F05C8C3AB51A9E63825 /* TripCatalog.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -202,7 +215,9 @@
 			isa = PBXGroup;
 			children = (
 				AD02B66156C224B20C4F611E /* AppLinks.swift */,
+				A8F31C92B4D06E17C5A29481 /* CompassLocationManager.swift */,
 				5A1B82C3D4E67F18A9B20C31 /* CoverImageStore.swift */,
+				B9E42D83C6A18F39E7C41603 /* GeoMath.swift */,
 				1C8D47B0E9A25F64D1B38C70 /* KeyboardDismiss.swift */,
 				41B0AF04854F6C24D0EE1E7F /* ScreenBackground.swift */,
 				7C3D04E5F6A89B30C1D42E53 /* TripReminderScheduler.swift */,
@@ -366,8 +381,13 @@
 				B8F25D03C7E16A29D4B30C52 /* StatsView.swift in Sources */,
 				6B2C93D4E5F78A29B0C31D42 /* CoverImageStore.swift in Sources */,
 				8D4E15F6A7B90C41D2E53F64 /* TripReminderScheduler.swift in Sources */,
+				C7E40D83A5F17B28D6B30592 /* CompassLocationManager.swift in Sources */,
+				D0F53E94B7B29A40F8D52714 /* GeoMath.swift in Sources */,
+				E2B75016D9D4BC62B0F74936 /* TripCatalog.swift in Sources */,
 				0F6037B8C9D12E63F4075186 /* PhrasePracticeView.swift in Sources */,
 				2B8259D0E1F3408516297308 /* ItineraryView.swift in Sources */,
+				A6FB9450B3B80FA6F4DB8D7A /* RoutePinPicker.swift in Sources */,
+				F4D97238F1F6DE84D2B96B58 /* WishlistView.swift in Sources */,
 				4D0471F2A3B5620738419520 /* VisitJournalView.swift in Sources */,
 				20E8272358B802202302C745 /* ContentView.swift in Sources */,
 				26B1C85375414A5DCFFEE725 /* DestinationDetailView.swift in Sources */,
@@ -394,14 +414,16 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = VoyantreeTravelCompass/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Voyantree Travel Compass";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Voyantree uses your location and compass heading to point at the next walking stop on your route and show live distance.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.van.v0y3ntr33tr8v3lc0mp3ss;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -532,14 +554,16 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = VoyantreeTravelCompass/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Voyantree Travel Compass";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Voyantree uses your location and compass heading to point at the next walking stop on your route and show live distance.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.van.v0y3ntr33tr8v3lc0mp3ss;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

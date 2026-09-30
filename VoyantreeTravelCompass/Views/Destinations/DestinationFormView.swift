@@ -13,7 +13,8 @@ struct DestinationFormView: View {
     @State private var endDate = Date()
     @State private var notes = ""
     @State private var timezone = "Local"
-    @State private var climate = ClimateKind.temperate.rawValue
+    @State private var climate = TripScenario.cityWeekend.rawValue
+    @State private var phraseLanguage = PhraseLanguage.french.rawValue
     @State private var coverFileName: String?
     @State private var pendingCover: UIImage?
     @State private var removeCover = false
@@ -22,7 +23,7 @@ struct DestinationFormView: View {
     @State private var countryError: String?
 
     private var climateOptions: [String] {
-        var items = ClimateKind.allCases.map(\.rawValue)
+        var items = TripScenario.allCases.map(\.rawValue)
         if !climate.isEmpty, !items.contains(climate) {
             items.insert(climate, at: 0)
         }
@@ -58,9 +59,14 @@ struct DestinationFormView: View {
                     }
                 }
                 Section("Context") {
-                    Picker("Climate", selection: $climate) {
+                    Picker("Packing kit", selection: $climate) {
                         ForEach(climateOptions, id: \.self) { item in
                             Text(item).tag(item)
+                        }
+                    }
+                    Picker("Phrase pack", selection: $phraseLanguage) {
+                        ForEach(PhraseLanguage.allCases) { item in
+                            Text(item.title).tag(item.rawValue)
                         }
                     }
                     TextField("Time zone label", text: $timezone)
@@ -92,7 +98,8 @@ struct DestinationFormView: View {
                     endDate = existing.endDate
                     notes = existing.notes
                     timezone = existing.timezone
-                    climate = existing.climate
+                    climate = existing.scenario.rawValue
+                    phraseLanguage = existing.phraseLanguage
                     coverFileName = existing.coverFileName
                     removeCover = false
                     pendingCover = nil
@@ -167,9 +174,10 @@ struct DestinationFormView: View {
             timezone: timezone,
             climate: climate,
             journal: existing?.journal ?? "",
-            coverFileName: fileName
+            coverFileName: fileName,
+            phraseLanguage: phraseLanguage
         )
-        store.upsertDestination(item)
+        store.upsertDestination(item, attachKits: existing == nil)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         dismiss()
     }
